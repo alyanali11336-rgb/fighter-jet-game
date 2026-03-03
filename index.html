@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NY DEFENDER - FIXED</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        canvas { border: 4px solid #444; background: #000b1e; image-rendering: pixelated; }
+        .hud { width: 800px; display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="hud">
+        <span>SQUADRON: NY-01</span>
+        <span id="scoreBoard">SCORE: 0000</span>
+    </div>
+    <canvas id="game" width="800" height="400"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('scoreBoard');
+
+// FIXED: Matching the double extension from your screenshot
+const jetImg = new Image();
+jetImg.src = 'fighterjet.png.png'; 
+
+let score = 0;
+let gameOver = false;
+let frame = 0;
+const input = { w: false, s: false, a: false, d: false, space: false };
+let player = { x: 50, y: 180, w: 90, h: 45, speed: 7 };
+let bullets = [], enemies = [], buildings = [], particles = [];
+
+function init() {
+    for(let i=0; i<20; i++) {
+        buildings.push({ x: i*60, w: 40+Math.random()*40, h: 100+Math.random()*150, c: `rgb(20,20,${30+Math.random()*40})` });
+    }
+}
+
+window.onkeydown = (e) => { if(e.code==='KeyW') input.w=true; if(e.code==='KeyS') input.s=true; if(e.code==='KeyA') input.a=true; if(e.code==='KeyD') input.d=true; if(e.code==='Space') input.space=true; };
+window.onkeyup = (e) => { if(e.code==='KeyW') input.w=false; if(e.code==='KeyS') input.s=false; if(e.code==='KeyA') input.a=false; if(e.code==='KeyD') input.d=false; if(e.code==='Space') input.space=false; };
+
+function update() {
+    if(gameOver) return;
+    frame++;
+    if(input.w && player.y > 0) player.y -= player.speed;
+    if(input.s && player.y < canvas.height - player.h) player.y += player.speed;
+    if(input.a && player.x > 0) player.x -= player.speed;
+    if(input.d && player.x < 350) player.x += player.speed;
+
+    if(input.space && frame % 10 === 0) bullets.push({x: player.x+player.w, y: player.y+22, w:15, h:4});
+
+    bullets.forEach((b, i) => { b.x += 12; if(b.x > 800) bullets.splice(i, 1); });
+
+    if(frame % 45 === 0) enemies.push({x: 850, y: Math.random()*300, w: 30, h: 20, s: 5});
+
+    enemies.forEach((en, ei) => {
+        en.x -= en.s;
+        // Hit detection
+        if(player.x < en.x+en.w && player.x+player.w > en.x && player.y < en.y+en.h && player.y+player.h > en.y) gameOver = true;
+        bullets.forEach((b, bi) => {
+            if(b.x < en.x+en.w && b.x+b.w > en.x && b.y < en.y+en.h && b.y+b.h > en.y) {
+                enemies.splice(ei, 1); bullets.splice(bi, 1); score += 100;
+                scoreEl.innerText = `SCORE: ${score.toString().padStart(4, '0')}`;
+            }
+        });
+        if(en.x < -50) enemies.splice(ei, 1);
+    });
+    buildings.forEach(b => { b.x -= 2; if(b.x+b.w < 0) b.x = 850; });
+}
+
+function draw() {
+    ctx.clearRect(0,0,800,400);
+    buildings.forEach(b => { ctx.fillStyle = b.c; ctx.fillRect(b.x, 400-b.h, b.w, b.h); });
+    
+    // Draw Jet
+    if(!gameOver) ctx.drawImage(jetImg, player.x, player.y, player.w, player.h);
+
+    ctx.fillStyle = "white";
+    bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+    ctx.fillStyle = "red";
+    enemies.forEach(en => ctx.fillRect(en.x, en.y, en.w, en.h));
+
+    if(gameOver) {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,800,400);
+        ctx.fillStyle = "red"; ctx.textAlign = "center"; ctx.font = "30px Courier";
+        ctx.fillText("MISSION FAILED", 400, 200);
+    }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+init(); loop();
+</script>
+</body>
+</html>
